@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+
+  # Service base de données
+  paymybuddy-db:
+    image: mysql:8.0
+    container_name: paymybuddy-db
+    env_file:
+      - .env
+    volumes:
+      # Persistance des données MySQL
+      - mysql_data:/var/lib/mysql
+      # Scripts SQL d’initialisation
+      - ./db/initdb:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+
+  # Service backend Spring Boot
+  paymybuddy-backend:
+    image: paymybuddy-backend
+    container_name: paymybuddy-backend
+    depends_on:
+      - paymybuddy-db
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
+
