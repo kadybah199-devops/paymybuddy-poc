@@ -15,7 +15,7 @@ Consultation des logs
 >> docker logs paymybuddy-backend
 >> docker logs paymybuddy-db
 <img width="1142" height="428" alt="tcp4" src="https://github.com/user-attachments/assets/1dbffbbf-3a77-4c9a-a4ca-0ccfb565e8cb" />
-
+     -- donner les droit a l'utilisateur vagrant comme la machine virtuelle est creer par vagrant: newgrp docker vagrant
 2.  Docker Registry
 Déploiement du registre privé
 >> docker run -d -p 5000:5000 --name registry registry:2
