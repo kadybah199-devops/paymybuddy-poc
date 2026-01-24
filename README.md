@@ -1,4 +1,4 @@
-Commandes utilisées (construction et test)
+Commandes utilisées 
 1. Construction de l’image backend
 >> docker build -t paymybuddy-backend ./backend
 <img width="1318" height="675" alt="tpc1" src="https://github.com/user-attachments/assets/18e8b61a-d805-4677-8c35-914b622bb61d" />
