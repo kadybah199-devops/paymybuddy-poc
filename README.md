@@ -23,9 +23,11 @@ Déploiement du registre privé
 
 Tag de l’image backend
 >> docker tag paymybuddy-backend localhost:5000/paymybuddy-backend
+<img width="1141" height="447" alt="tag" src="https://github.com/user-attachments/assets/8f675f61-1c6f-445e-ac27-bb269fceebd5" />
 
 Push vers le registre privé
 >> docker push localhost:5000/paymybuddy-backend
+<img width="1346" height="674" alt="push" src="https://github.com/user-attachments/assets/1452fe19-0396-4ae5-846f-6d9231c2903b" />
 
 Utilisation de l’image depuis le registre
 
