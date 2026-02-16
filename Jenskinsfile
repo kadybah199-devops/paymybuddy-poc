@@ -1,1 +1,132 @@
+pipeline {
+    agent {
+        docker {
+            image 'maven:3.9.6-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
+    environment {
+        DOCKER_IMAGE = "kady199/paymyboddy-backend"
+        APP_NAME = "paymybuddy"
+        SONAR_PROJECT_KEY = "paymybuddy-poc"
+        SONAR_ORG = "kadybah199"
+        SONAR_HOST = "https://sonarcloud.io"
+    }
+
+    stages {
+
+        stage('Tests Automatisés') {
+            steps {
+                sh 'mvn clean test'
+            }
+        }
+
+        stage('Analyse Qualité - SonarCloud') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    -Dsonar.organization=${SONAR_ORG} \
+                    -Dsonar.host.url=${SONAR_HOST} \
+                    -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
+        stage('Build JAR') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build & Push Image Docker') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                    docker push ${DOCKER_IMAGE}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Staging (Docker Compose)') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sshagent(['ssh-staging']) {
+                    sh """
+                    ssh user@staging-server '
+                    cd /opt/paymybuddy &&
+                    docker compose pull &&
+                    docker compose down &&
+                    docker compose up -d
+                    '
+                    """
+                }
+            }
+        }
+
+        stage('Validation Staging') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'curl -f http://staging-server:8080 || exit 1'
+            }
+        }
+
+        stage('Deploy Production (Docker Compose)') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sshagent(['ssh-prod']) {
+                    sh """
+                    ssh user@prod-server '
+                    cd /opt/paymybuddy &&
+                    docker compose pull &&
+                    docker compose down &&
+                    docker compose up -d
+                    '
+                    """
+                }
+            }
+        }
+
+        stage('Validation Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'curl -f http://prod-server:8080 || exit 1'
+            }
+        }
+    }
+
+    post {
+        success {
+            slackSend(
+                webhookUrl: credentials('slack-webhook'),
+                message: "✅ Pipeline SUCCESS : ${JOB_NAME} #${BUILD_NUMBER}"
+            )
+        }
+        failure {
+            slackSend(
+                webhookUrl: credentials('slack-webhook'),
+                message: "❌ Pipeline FAILED : ${JOB_NAME} #${BUILD_NUMBER}"
+            )
+        }
+    }
+}
