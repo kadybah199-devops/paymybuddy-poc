@@ -1,8 +1,28 @@
 version: "3.9"
 
+# ============================================================
+# Docker Compose — PayMyBuddy POC
+# Orchestration : backend Spring Boot + MySQL 8.0 + Registry
+# ============================================================
+
 services:
 
-  # Service base de données
+  # ----------------------------------------------------------
+  # Registry Docker privé (4 points TP)
+  # Accessible sur le port 5000
+  # ----------------------------------------------------------
+  registry:
+    image: registry:2
+    container_name: paymybuddy-registry
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Service base de données MySQL
+  # ----------------------------------------------------------
   paymybuddy-db:
     image: mysql:8.0
     container_name: paymybuddy-db
@@ -11,7 +31,7 @@ services:
     volumes:
       # Persistance des données MySQL
       - mysql_data:/var/lib/mysql
-      # Scripts SQL d'initialisation
+      # Scripts SQL d'initialisation (exécutés au 1er démarrage)
       - ./db/initdb:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
@@ -21,11 +41,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
 
+  # ----------------------------------------------------------
   # Service backend Spring Boot
+  # Image buildée depuis la racine et poussée dans le registry
+  # ----------------------------------------------------------
   paymybuddy-backend:
-    image: paymybuddy-backend
+    image: localhost:5000/paymybuddy-backend:latest
     container_name: paymybuddy-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       paymybuddy-db:
         condition: service_healthy
@@ -33,6 +60,11 @@ services:
       - .env
     ports:
       - "8080:8080"
+    restart: unless-stopped
 
+# ----------------------------------------------------------
+# Volumes persistants
+# ----------------------------------------------------------
 volumes:
   mysql_data:
+  registry_data:
