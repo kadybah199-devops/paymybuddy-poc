@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+
+  # Service base de données
+  paymybuddy-db:
+    image: mysql:8.0
+    container_name: paymybuddy-db
+    env_file:
+      - .env
+    volumes:
+      # Persistance des données MySQL
+      - mysql_data:/var/lib/mysql
+      # Scripts SQL d'initialisation
+      - ./db/initdb:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Service backend Spring Boot
+  paymybuddy-backend:
+    image: paymybuddy-backend
+    container_name: paymybuddy-backend
+    depends_on:
+      paymybuddy-db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
