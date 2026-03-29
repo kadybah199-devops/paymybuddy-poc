@@ -1,21 +1,26 @@
-# PayMyBuddy — Proof of Concept
+# PayMyBuddy — Proof of Concept Docker
 
-Déploiement conteneurisé d'une application Spring Boot + MySQL via Docker et Docker Registry privé.
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=flat&logo=springboot&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL_8.0-4479A1?style=flat&logo=mysql&logoColor=white)
+
+Déploiement conteneurisé d'une application Spring Boot + MySQL via Docker Compose et un Registry privé.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────┐        ┌──────────────────────────┐
-│  paymybuddy-backend     │──────▶ │  paymybuddy-db           │
-│  Spring Boot :8080      │        │  MySQL 8.0 :3306         │
-└─────────────────────────┘        └──────────────────────────┘
-```
+Utilisateur :8080
+      │
+      ▼
+paymybuddy-backend (Spring Boot)
+      │
+      ▼
+paymybuddy-db (MySQL 8.0 :3306)
 
-- **Backend** : image `amazoncorretto:17-alpine` + JAR Spring Boot
-- **Base de données** : MySQL 8.0 avec initialisation automatique du schéma
-- **Réseau** : le backend attend que la DB soit prête (`healthcheck`) avant de démarrer
+localhost:5000 → Registry Docker privé
+```
 
 ---
 
@@ -24,124 +29,112 @@ Déploiement conteneurisé d'une application Spring Boot + MySQL via Docker et D
 - Docker ≥ 20.10
 - Docker Compose ≥ 2.0
 
-> Sur une VM Vagrant, ajouter l'utilisateur au groupe docker :
-> ```bash
-> sudo usermod -aG docker vagrant && newgrp docker
-> ```
-
----
-
-## Configuration
-
-Copier le fichier d'exemple et ajuster si besoin :
-
-```bash
-cp .env.example .env
-```
-
-Les variables disponibles :
-
-| Variable                    | Description                              | Valeur par défaut                              |
-|-----------------------------|------------------------------------------|------------------------------------------------|
-| `MYSQL_ROOT_PASSWORD`       | Mot de passe root MySQL                  | `rootpassword`                                 |
-| `MYSQL_DATABASE`            | Nom de la base de données                | `paymybuddy`                                   |
-| `MYSQL_USER`                | Utilisateur applicatif MySQL             | `paymybuddy`                                   |
-| `MYSQL_PASSWORD`            | Mot de passe de l'utilisateur            | `paymybuddy123`                                |
-| `SPRING_DATASOURCE_URL`     | URL JDBC du backend                      | `jdbc:mysql://paymybuddy-db:3306/paymybuddy`   |
-| `SPRING_DATASOURCE_USERNAME`| Login Spring Boot                        | `paymybuddy`                                   |
-| `SPRING_DATASOURCE_PASSWORD`| Mot de passe Spring Boot                 | `paymybuddy123`                                |
-
----
-
-## Déploiement local
-
-### 1. Construction de l'image backend
-
-```bash
-docker build -t paymybuddy-backend ./backend
-```
-
-### 2. Lancement de l'infrastructure complète
-
-```bash
-docker compose up -d
-```
-
-Le backend attend automatiquement que MySQL soit disponible grâce au `healthcheck` défini dans `docker-compose.yml`.
-
-### 3. Vérification des conteneurs
-
-```bash
-docker ps
-```
-
-### 4. Consultation des logs
-
-```bash
-# Logs du backend Spring Boot
-docker logs paymybuddy-backend
-
-# Logs de la base de données
-docker logs paymybuddy-db
-```
-
----
-
-## Docker Registry privé
-
-### Déploiement du registre local
-
-```bash
-docker run -d -p 5000:5000 --name registry registry:2
-```
-
-### Tag et push de l'image backend
-
-```bash
-docker tag paymybuddy-backend localhost:5000/paymybuddy-backend
-docker push localhost:5000/paymybuddy-backend
-```
-
-### Utilisation de l'image depuis le registre
-
-Dans `docker-compose.yml`, remplacer :
-
-```yaml
-image: paymybuddy-backend
-```
-
-par :
-
-```yaml
-image: localhost:5000/paymybuddy-backend
-```
-
 ---
 
 ## Structure du projet
 
 ```
 paymybuddy-poc/
-├── .env                    # Variables d'environnement (à ne pas committer)
-├── .env.example            # Modèle de configuration
-├── docker-compose.yml      # Orchestration des services
-├── backend/
-│   ├── Dockerfile          # Image Spring Boot (amazoncorretto:17-alpine)
-│   └── target/
-│       └── paymybuddy.jar  # JAR pré-compilé
+├── Dockerfile                          # Image backend
+├── docker-compose.yml                  # Orchestration des services
+├── .env                                # Variables d'environnement (⚠️ ne pas committer)
+├── .env.example                        # Modèle de configuration
+├── target/
+│   └── paymybuddy.jar                  # JAR Spring Boot
 └── db/
     └── initdb/
-        └── init.sql        # Initialisation du schéma MySQL
+        └── init.sql                    # Schéma MySQL (exécuté au 1er démarrage)
 ```
 
 ---
 
-## Arrêt et nettoyage
+## Configuration
 
 ```bash
-# Arrêter les conteneurs
+cp .env.example .env
+```
+
+| Variable | Description | Valeur par défaut |
+|---|---|---|
+| `MYSQL_DATABASE` | Nom de la base | `db_paymybuddy` |
+| `MYSQL_USER` | Utilisateur MySQL | `paymybuddy` |
+| `MYSQL_PASSWORD` | Mot de passe | `paymybuddy` |
+| `SPRING_DATASOURCE_URL` | URL JDBC | `jdbc:mysql://paymybuddy-db:3306/db_paymybuddy` |
+
+---
+
+## Déploiement
+
+### 1. Démarrer le Registry privé
+
+```bash
+docker compose up -d registry
+```
+
+### 2. Builder et pousser l'image
+
+```bash
+docker build -t localhost:5000/paymybuddy-backend:latest .
+docker push localhost:5000/paymybuddy-backend:latest
+```
+
+### 3. Lancer tous les services
+
+```bash
+docker compose up -d
+```
+
+### 4. Vérifier
+
+```bash
+docker ps
+```
+
+```
+CONTAINER ID   IMAGE                                      PORTS                    NAMES
+xxxxxxxxxxxx   localhost:5000/paymybuddy-backend:latest   0.0.0.0:8080->8080/tcp   paymybuddy-backend
+xxxxxxxxxxxx   mysql:8.0                                  0.0.0.0:3306->3306/tcp   paymybuddy-db
+xxxxxxxxxxxx   registry:2                                 0.0.0.0:5000->5000/tcp   paymybuddy-registry
+```
+
+Application accessible sur : **http://localhost:8080**
+
+---
+
+## Screenshots
+
+### docker ps — 3 conteneurs actifs
+> *screenshot ici*
+
+### Application PayMyBuddy
+> *screenshot ici*
+
+### Registry privé
+> *screenshot ici*
+
+---
+
+## Commandes utiles
+
+```bash
+# Logs backend
+docker logs paymybuddy-backend -f
+
+# Vérifier les tables MySQL
+docker exec -it paymybuddy-db mysql -u root -prootpassword db_paymybuddy -e "SHOW TABLES;"
+
+# Vérifier le registry
+curl http://localhost:5000/v2/_catalog
+
+# Arrêter tout
 docker compose down
 
-# Arrêter et supprimer les volumes (réinitialise la BDD)
+# Arrêter et supprimer les volumes (réinitialise la DB)
 docker compose down -v
 ```
+
+---
+
+## Auteur
+
+**kadybah199** — Formation DevOps · eazytraining.fr
