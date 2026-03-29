@@ -104,13 +104,16 @@ Application accessible sur : **http://localhost:8080**
 ## Screenshots
 
 ### docker ps — 3 conteneurs actifs
-> *screenshot ici*
+<img width="1019" height="304" alt="docker ps" src="https://github.com/user-attachments/assets/a578b6f6-f611-4754-a4ee-a27c0562c018" />
+
 
 ### Application PayMyBuddy
-> *screenshot ici*
+<img width="1347" height="673" alt="paymybuddy" src="https://github.com/user-attachments/assets/0dc58462-8f7d-4cb7-8ed3-bbb261cfa433" />
+
 
 ### Registry privé
-> *screenshot ici*
+<img width="1033" height="311" alt="registry" src="https://github.com/user-attachments/assets/9c7af4c2-0292-472d-a5e4-0eaf2afc3e63" />
+
 
 ---
 
@@ -133,8 +136,3 @@ docker compose down
 docker compose down -v
 ```
 
----
-
-## Auteur
-
-**kadybah199** — Formation DevOps · eazytraining.fr
